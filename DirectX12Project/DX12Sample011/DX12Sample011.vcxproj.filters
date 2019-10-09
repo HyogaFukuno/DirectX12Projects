@@ -1,0 +1,136 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ソース ファイル">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="ヘッダー ファイル">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="リソース ファイル">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="入力機器関連">
+      <UniqueIdentifier>{dc33ba05-3a7b-4dae-bb7d-18f9cf721406}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="システム関連">
+      <UniqueIdentifier>{9cc1a4c2-00c6-47eb-909b-cca207fc4071}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene関連">
+      <UniqueIdentifier>{c4dca7a1-657d-4a7d-b54b-12182fe5d26f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="XAudio関連">
+      <UniqueIdentifier>{681a1e59-4f73-4257-ba44-439cd599337d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="DirectX関連">
+      <UniqueIdentifier>{f1c2604d-30dd-4a9d-8f0d-926ba435fbaa}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Grid.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="XInput.cpp">
+      <Filter>入力機器関連</Filter>
+    </ClCompile>
+    <ClCompile Include="Application.cpp">
+      <Filter>システム関連</Filter>
+    </ClCompile>
+    <ClCompile Include="WinSystem.cpp">
+      <Filter>システム関連</Filter>
+    </ClCompile>
+    <ClCompile Include="TimerThread.cpp">
+      <Filter>システム関連</Filter>
+    </ClCompile>
+    <ClCompile Include="InputDevice.cpp">
+      <Filter>入力機器関連</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseScene.cpp">
+      <Filter>Scene関連</Filter>
+    </ClCompile>
+    <ClCompile Include="XAudio.cpp">
+      <Filter>XAudio関連</Filter>
+    </ClCompile>
+    <ClCompile Include="DXDevice.cpp">
+      <Filter>DirectX関連</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneManager.cpp">
+      <Filter>Scene関連</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Camera.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Grid.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="InputDevice.h">
+      <Filter>入力機器関連</Filter>
+    </ClInclude>
+    <ClInclude Include="XInput.h">
+      <Filter>入力機器関連</Filter>
+    </ClInclude>
+    <ClInclude Include="Application.h">
+      <Filter>システム関連</Filter>
+    </ClInclude>
+    <ClInclude Include="Global.h">
+      <Filter>システム関連</Filter>
+    </ClInclude>
+    <ClInclude Include="TimerThread.h">
+      <Filter>システム関連</Filter>
+    </ClInclude>
+    <ClInclude Include="BaseScene.h">
+      <Filter>Scene関連</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneChanger.h">
+      <Filter>Scene関連</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneModule.h">
+      <Filter>Scene関連</Filter>
+    </ClInclude>
+    <ClInclude Include="XAudio.h">
+      <Filter>XAudio関連</Filter>
+    </ClInclude>
+    <ClInclude Include="WaveFileReader.h">
+      <Filter>XAudio関連</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSystem.h">
+      <Filter>システム関連</Filter>
+    </ClInclude>
+    <ClInclude Include="DXDevice.h">
+      <Filter>DirectX関連</Filter>
+    </ClInclude>
+    <ClInclude Include="DirectXinclude.h">
+      <Filter>DirectX関連</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneManager.h">
+      <Filter>Scene関連</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shader\Grid_GS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader\Grid_PS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader\Grid_VS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="resource\config.ini">
+      <Filter>システム関連</Filter>
+    </None>
+  </ItemGroup>
+</Project>
