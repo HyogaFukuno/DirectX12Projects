@@ -9,4 +9,6 @@
 #pragma comment(lib, "d3dcompiler.lib")
 #include <DirectXMath.h>
 #include <D3dx12.h>
+
+using Microsoft::WRL::ComPtr;
 #endif /* __DIRECTXINCLUDE_H__ */

@@ -5,45 +5,21 @@
 CDXDevice::CDXDevice()
 {
 	m_hWnd = nullptr;
-	m_WindowSize = SIZE();
-	m_pd3dDevice = nullptr;
-	m_pCommandQueue = nullptr;
-	m_pSwapChain = nullptr;
-	m_prtvDescriptorHeap = nullptr;
-	m_rtvbDescriptorSize = 0;
-	m_pdsvDescriptorHeap = nullptr;
-	m_pDepthBuffer = nullptr;
+	ZeroMemory(&m_WindowSize, sizeof(m_WindowSize));
 	m_FenceIndex = 0;
-	m_pCommandList = nullptr;
+	m_FenceValue = 0;
+	m_rtvbDescriptorSize = 0;
+	ZeroMemory(&m_DisplayMode, sizeof(m_DisplayMode));
+	ZeroMemory(&m_ViewPort, sizeof(m_ViewPort));
+	ZeroMemory(&m_ScissorRect, sizeof(m_ScissorRect));
 
 	m_pSceneManager = nullptr;
-	ZeroMemory(&m_DisplayMode, sizeof(m_DisplayMode));
 }
 
 // デストラクタ
 CDXDevice::~CDXDevice()
 {
-	SAFE_RELEASE(m_pCommandList);
-
-	// フェンス解放
-	for (UINT i = 0; i < FrameCount; i++)
-		SAFE_RELEASE(m_pFence[i]);
-
-	// コマンドアロケーター解放
-	for (UINT i = 0; i < FrameCount; i++)
-		SAFE_RELEASE(m_pCommandAllocator[i]);
-
-	SAFE_RELEASE(m_pDepthBuffer);
-	SAFE_RELEASE(m_pdsvDescriptorHeap);
-
-	// レンダーターゲットビュー解放
-	for (UINT i = 0; i < FrameCount; i++)
-		SAFE_RELEASE(m_pRenderTargetView[i]);
-
-	SAFE_RELEASE(m_prtvDescriptorHeap);
-	SAFE_RELEASE(m_pSwapChain);
-	SAFE_RELEASE(m_pCommandQueue);
-	SAFE_RELEASE(m_pd3dDevice);
+	
 }
 
 // ------------------------------------------------------------------------
@@ -61,32 +37,23 @@ HRESULT CDXDevice::Initialize(HWND hWnd, SIZE WindowSize, BOOL Windowed)
 	HRESULT hr = S_OK;
 
 	// デバッグレイヤーの有効
-	ID3D12Debug* pDebug = nullptr;
+	ComPtr<ID3D12Debug> pDebug;
+	ComPtr<ID3D12Debug3> pGPUBasedValidation;
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&pDebug))))
 		pDebug->EnableDebugLayer();
 
-	// GBVの有効化
-	ID3D12Debug1* pGBV = nullptr;
-	if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&pDebug))))
-		return E_FAIL;
-
-	if (SUCCEEDED(pDebug->QueryInterface(IID_PPV_ARGS(&pGBV))))
-	{
-		pGBV->SetEnableGPUBasedValidation(TRUE);
-	}
-
-	SAFE_RELEASE(pGBV);
-	SAFE_RELEASE(pDebug);
+	// GPUベースのバリデーション有効化
+	pDebug.As(&pGPUBasedValidation);
+	pGPUBasedValidation->SetEnableGPUBasedValidation(TRUE);
 
 	// DXGIファクトリーの生成
-	IDXGIFactory3* pDXGIFactory = nullptr;
+	ComPtr<IDXGIFactory3> pDXGIFactory;
 	UINT Flags = 0;
 #if defined(DEBUG) || defined(_DEBUG)
 	Flags |= DXGI_CREATE_FACTORY_DEBUG;
 #endif
-
-	hr = CreateDXGIFactory2(Flags, IID_PPV_ARGS(&pDXGIFactory));
-	if (FAILED(hr))
+	
+	if (FAILED(CreateDXGIFactory2(Flags, IID_PPV_ARGS(&pDXGIFactory))))
 	{
 		if (g_DebugFlag)
 			OutputDebugString("CreateDXGIFactory2()に失敗。\n");
@@ -95,7 +62,7 @@ HRESULT CDXDevice::Initialize(HWND hWnd, SIZE WindowSize, BOOL Windowed)
 	}
 
 	// ハードウェアアダプターの検索
-	IDXGIAdapter1* pDXGIAdapter = nullptr;
+	ComPtr<IDXGIAdapter1> pDXGIAdapter;
 	UINT AdapterIndex = { 0, };
 	while (DXGI_ERROR_NOT_FOUND !=
 		pDXGIFactory->EnumAdapters1(AdapterIndex, &pDXGIAdapter))
@@ -107,16 +74,14 @@ HRESULT CDXDevice::Initialize(HWND hWnd, SIZE WindowSize, BOOL Windowed)
 			continue;
 
 		// D3D12デバイスが使用可能か
-		hr = D3D12CreateDevice(pDXGIAdapter, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device), nullptr);
+		hr = D3D12CreateDevice(pDXGIAdapter.Get(), D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device), nullptr);
 		if (SUCCEEDED(hr))
 			break;
-
-		SAFE_RELEASE(pDXGIAdapter);
 	}
 
 	// D3D12デバイスの生成
-	hr = D3D12CreateDevice(pDXGIAdapter,
-		D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_pd3dDevice));
+	ComPtr<ID3D12Device> pd3dDevice;
+	hr = D3D12CreateDevice(pDXGIAdapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&pd3dDevice));
 	if (FAILED(hr))
 	{
 		if (g_DebugFlag)
@@ -124,8 +89,7 @@ HRESULT CDXDevice::Initialize(HWND hWnd, SIZE WindowSize, BOOL Windowed)
 
 		return E_FAIL;
 	}
-
-	SAFE_RELEASE(pDXGIAdapter);
+	pd3dDevice.As(&m_pd3dDevice);
 
 	// コマンドキューの生成
 	if (FAILED(CreateCommandQueue()))
@@ -154,7 +118,7 @@ HRESULT CDXDevice::Initialize(HWND hWnd, SIZE WindowSize, BOOL Windowed)
 	}
 	else
 	{
-		SCDesc.Width = WindowSize.cx;		// バッファの幅
+		SCDesc.Width = WindowSize.cx;	// バッファの幅
 		SCDesc.Height = WindowSize.cy;	// バッファの高さ
 	}
 	
@@ -163,16 +127,12 @@ HRESULT CDXDevice::Initialize(HWND hWnd, SIZE WindowSize, BOOL Windowed)
 	SCDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	SCDesc.SampleDesc.Count = 1;
 	
-	IDXGISwapChain1* pSwapChain = nullptr;
-	hr = pDXGIFactory->CreateSwapChainForHwnd(m_pCommandQueue, hWnd, &SCDesc, nullptr, nullptr, &pSwapChain);
+	ComPtr<IDXGISwapChain1> pSwapChain;
+	hr = pDXGIFactory->CreateSwapChainForHwnd(m_pCommandQueue.Get(), hWnd, &SCDesc, nullptr, nullptr, &pSwapChain);
 	if (FAILED(hr))
-	{
 		return E_FAIL;
-	}
 
-	m_pSwapChain = reinterpret_cast<IDXGISwapChain3*>(pSwapChain);
-
-	SAFE_RELEASE(pDXGIFactory);
+	pSwapChain.As(&m_pSwapChain);
 
 	// ディスプレイモードの取得
 	if (FAILED(GetDisplayMode()))
@@ -210,8 +170,8 @@ HRESULT CDXDevice::Initialize(HWND hWnd, SIZE WindowSize, BOOL Windowed)
 		return E_FAIL;
 	}
 
-	// フレームフェンスの生成
-	if (FAILED(CreateFrameFences()))
+	// フェンスの生成
+	if (FAILED(CreateFences()))
 	{
 		if (g_DebugFlag)
 			OutputDebugString("CreateFrameFences()に失敗。\n");
@@ -252,8 +212,6 @@ HRESULT CDXDevice::Initialize(HWND hWnd, SIZE WindowSize, BOOL Windowed)
 	Vp.MaxDepth = 1.0f;
 	Vp.TopLeftX = 0;
 	Vp.TopLeftY = 0;
-	//m_pCommandList->RSSetViewports(1, &Vp);
-	//m_pCommandList->RSSetScissorRects(1, &rc);
 	m_ViewPort = Vp;
 	m_ScissorRect = rc;
 
@@ -282,7 +240,8 @@ HRESULT CDXDevice::CreateCommandQueue()
 		0
 	};
 
-	hr = m_pd3dDevice->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_pCommandQueue));
+	ComPtr<ID3D12CommandQueue> pCommandQueue;
+	hr = m_pd3dDevice->CreateCommandQueue(&desc, IID_PPV_ARGS(&pCommandQueue));
 	if (FAILED(hr))
 	{
 		if (g_DebugFlag)
@@ -290,6 +249,7 @@ HRESULT CDXDevice::CreateCommandQueue()
 
 		return E_FAIL;
 	}
+	pCommandQueue.As(&m_pCommandQueue);
 
 	return S_OK;
 }
@@ -310,11 +270,17 @@ HRESULT CDXDevice::CreateRenderTargetView()
 		0
 	};
 
-	hr = m_pd3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_prtvDescriptorHeap));
+	ComPtr<ID3D12DescriptorHeap> prtvDescriptorHeap;
+	hr = m_pd3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&prtvDescriptorHeap));
 	if (FAILED(hr))
 	{
+		if (g_DebugFlag)
+			OutputDebugString("CreateDescriptorHeap()に失敗。\n");
+
 		return E_FAIL;
 	}
+	prtvDescriptorHeap.As(&m_prtvDescriptorHeap);
+
 	// レンダーターゲット用のデスクリプタヒープバイト数を取得
 	m_rtvbDescriptorSize = m_pd3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
@@ -325,7 +291,7 @@ HRESULT CDXDevice::CreateRenderTargetView()
 	for (UINT i = 0; i < FrameCount; ++i)
 	{
 		m_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&m_pRenderTargetView[i]));
-		m_pd3dDevice->CreateRenderTargetView(m_pRenderTargetView[i], nullptr, rtvHandle);
+		m_pd3dDevice->CreateRenderTargetView(m_pRenderTargetView[i].Get(), nullptr, rtvHandle);
 		// 参照するデスクリプタを変更
 		rtvHandle.Offset(1, m_rtvbDescriptorSize);
 	}
@@ -361,7 +327,8 @@ HRESULT CDXDevice::CreateDepthStencilView()
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
-	hr = m_pd3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_pdsvDescriptorHeap));
+	ComPtr<ID3D12DescriptorHeap> pdscDescriptorHeap;
+	hr = m_pd3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&pdscDescriptorHeap));
 	if (FAILED(hr))
 	{
 		if (g_DebugFlag)
@@ -369,6 +336,7 @@ HRESULT CDXDevice::CreateDepthStencilView()
 
 		return E_FAIL;
 	}
+	pdscDescriptorHeap.As(&m_pdsvDescriptorHeap);
 
 	SIZE DepthSize;
 	if (FullScreen)
@@ -399,14 +367,16 @@ HRESULT CDXDevice::CreateDepthStencilView()
 	DepthClearValue.DepthStencil.Depth = 1.0f;
 	DepthClearValue.DepthStencil.Stencil = 0;
 
+	ComPtr<ID3D12Resource> pDepthBuffer;
 	hr = m_pd3dDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&resDesc,
 		D3D12_RESOURCE_STATE_DEPTH_WRITE,	// デプス書き込み
 		&DepthClearValue,
-		IID_PPV_ARGS(&m_pDepthBuffer)
+		IID_PPV_ARGS(&pDepthBuffer)
 	);
+	pDepthBuffer.As(&m_pDepthBuffer);
 
 	if (FAILED(hr))
 	{
@@ -424,7 +394,7 @@ HRESULT CDXDevice::CreateDepthStencilView()
 	dsvDesc.Texture2D.MipSlice = 0;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pdsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-	m_pd3dDevice->CreateDepthStencilView(m_pDepthBuffer, &dsvDesc, dsvHandle);
+	m_pd3dDevice->CreateDepthStencilView(m_pDepthBuffer.Get(), &dsvDesc, dsvHandle);
 
 	return S_OK;
 }
@@ -436,12 +406,13 @@ HRESULT CDXDevice::CreateDepthStencilView()
 HRESULT CDXDevice::CreateCommandAllocators()
 {
 	HRESULT hr = S_OK;
+	ComPtr<ID3D12CommandAllocator> pCommandAllocator[FrameCount];
 
 	for (int i = 0; i < FrameCount; i++)
 	{
 		hr = m_pd3dDevice->CreateCommandAllocator(
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(&m_pCommandAllocator[i])
+			IID_PPV_ARGS(&pCommandAllocator[i])
 		);
 
 		if (FAILED(hr))
@@ -451,25 +422,27 @@ HRESULT CDXDevice::CreateCommandAllocators()
 
 			return E_FAIL;
 		}
+		pCommandAllocator[i].As(&m_pCommandAllocator[i]);
 	}
-
+	
 	return S_OK;
 }
 // ------------------------------------------------------------------------
-//　関数名  :CreateFrameFences			描画フレーム同期用フェンスの生成
+//　関数名  :CreateFences				描画フレーム同期用フェンスの生成
 //  引数	:							なし
 //  戻り値  :                           S_OK:成功、E_FAIL:何かしらの問題発生
 // ------------------------------------------------------------------------
-HRESULT CDXDevice::CreateFrameFences()
+HRESULT CDXDevice::CreateFences()
 {
 	HRESULT hr = S_OK;
+	ComPtr<ID3D12Fence1> pFence[FrameCount];
 
 	for (int i = 0; i < FrameCount; i++)
 	{
 		hr = m_pd3dDevice->CreateFence(
-			0,	// 初期値
+			0,
 			D3D12_FENCE_FLAG_NONE,
-			IID_PPV_ARGS(&m_pFence[i])
+			IID_PPV_ARGS(&pFence[i])
 		);
 
 		if (FAILED(hr))
@@ -479,6 +452,7 @@ HRESULT CDXDevice::CreateFrameFences()
 
 			return E_FAIL;
 		}
+		pFence[i].As(&m_pFence[i]);
 	}
 
 	return S_OK;
@@ -491,15 +465,17 @@ HRESULT CDXDevice::CreateFrameFences()
 HRESULT CDXDevice::CreateCommandList()
 {
 	HRESULT hr = S_OK;
+	ComPtr<ID3D12GraphicsCommandList> pCommandList;
 
 	// コマンドリストの生成
 	hr = m_pd3dDevice->CreateCommandList(
 		0,
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		m_pCommandAllocator[0],
+		m_pCommandAllocator[0].Get(),
 		nullptr,
-		IID_PPV_ARGS(&m_pCommandList)
+		IID_PPV_ARGS(&pCommandList)
 	);
+	pCommandList.As(&m_pCommandList);
 
 	if (FAILED(hr))
 	{
@@ -509,9 +485,7 @@ HRESULT CDXDevice::CreateCommandList()
 		return E_FAIL;
 	}
 
-	hr = m_pCommandList->Close();
-
-	if (FAILED(hr))
+	if (FAILED(m_pCommandList->Close()))
 	{
 		if (g_DebugFlag)
 			OutputDebugString("CommandListのClose()に失敗。\n");
@@ -588,7 +562,7 @@ HRESULT CDXDevice::GetDisplayMode()
 BOOL CDXDevice::CreateResource()
 {
 	// シーンマネージャーの生成
-	m_pSceneManager = new CSceneManager(m_hWnd, m_pd3dDevice, m_pCommandList);
+	m_pSceneManager = new CSceneManager(m_hWnd, m_pd3dDevice.Get(), m_pCommandList.Get());
 	if (nullptr == m_pSceneManager)
 		return FALSE;
 
@@ -620,7 +594,7 @@ void CDXDevice::Render()
 
 	m_pCommandAllocator[m_FenceIndex]->Reset();
 	m_pCommandList->Reset(
-		m_pCommandAllocator[m_FenceIndex],
+		m_pCommandAllocator[m_FenceIndex].Get(),
 		pPipelineState
 	);
 
@@ -630,7 +604,7 @@ void CDXDevice::Render()
 
 	// スワップチェイン表示可能からレンダーターゲット描画可能へ
 	auto BarrierToRT = CD3DX12_RESOURCE_BARRIER::Transition(
-		m_pRenderTargetView[m_FenceIndex],
+		m_pRenderTargetView[m_FenceIndex].Get(),
 		D3D12_RESOURCE_STATE_PRESENT,
 		D3D12_RESOURCE_STATE_RENDER_TARGET
 	);
@@ -661,7 +635,7 @@ void CDXDevice::Render()
 	m_pSceneManager->Render();
 
 	auto BarrierToPresent = CD3DX12_RESOURCE_BARRIER::Transition(
-		m_pRenderTargetView[m_FenceIndex],
+		m_pRenderTargetView[m_FenceIndex].Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET,
 		D3D12_RESOURCE_STATE_PRESENT
 	);
@@ -671,14 +645,14 @@ void CDXDevice::Render()
 	// 描画コマンドの積み処理終了
 	m_pCommandList->Close();
 
-	ID3D12CommandList* pList[] = { m_pCommandList };
+	ID3D12CommandList* pList[] = { m_pCommandList.Get() };
 	m_pCommandQueue->ExecuteCommandLists(1, pList);
 
 	// 画面への表示
 	m_pSwapChain->Present(1, 0);
 
 	// 以前のコマンドの実行を待つ
-	WaitPreviousFrame(m_pFence[m_FenceIndex], m_FenceIndex);
+	WaitPreviousFrame();
 }
 // ------------------------------------------------------------------------
 //　関数名  :WaitPreviousFrame		    CPU、GPUの同期処理
@@ -686,11 +660,12 @@ void CDXDevice::Render()
 //			:Value						インデックス
 //  戻り値  :                           なし
 // ------------------------------------------------------------------------
-void CDXDevice::WaitPreviousFrame(ID3D12Fence* pFence, UINT64 Value)
+void CDXDevice::WaitPreviousFrame()
 {
-	const UINT64 value = m_FenceIndex;
+	const UINT64 value = m_FenceValue;
+	ID3D12Fence1* pFence = m_pFence[m_FenceIndex].Get();
 	m_pCommandQueue->Signal(pFence, value);
-	m_FenceIndex++;
+	m_FenceValue++;
 
 	if (pFence->GetCompletedValue() < value)
 	{

@@ -20,39 +20,42 @@
 #define _CRTDBG_MAP_ALLOC
 #define new  ::new(_NORMAL_BLOCK, __FILE__, __LINE__)
 // ----------------- 定数宣言 ----------------
-constexpr int FrameCount = 2;	// バックバッファーの数
+static constexpr int FrameCount = 2;	// バックバッファーの数
 // ---------------- クラス宣言 ---------------
 class CDXDevice
 {
 private:
+	// ----- 描画環境 -----
 	HWND									m_hWnd;								// ウィンドウハンドル
 	SIZE									m_WindowSize;						// 起動時のウィンドウサイズ
-	ID3D12Device*							m_pd3dDevice;						// D3D12デバイス
-	ID3D12CommandQueue*						m_pCommandQueue;					// コマンドキュー
-	IDXGISwapChain3*						m_pSwapChain;						// スワップチェーン
-	ID3D12DescriptorHeap*					m_prtvDescriptorHeap;				// レンダーターゲット用デスクリプタヒープ
-	UINT									m_rtvbDescriptorSize;				// レンダーターゲット用デスクリプタバイト数
-	ID3D12Resource*							m_pRenderTargetView[FrameCount];	// レンダーターゲットビュー
-	ID3D12DescriptorHeap*					m_pdsvDescriptorHeap;				// デプスステンシルビュー用デスクリプタヒープ
-	ID3D12Resource*							m_pDepthBuffer;						// デプスステンシルバッファー
-	ID3D12CommandAllocator*					m_pCommandAllocator[FrameCount];	// コマンドアロケーター
-	ID3D12Fence1*							m_pFence[FrameCount];				// フェンス
+	ComPtr<ID3D12Device>					m_pd3dDevice;						// D3D12デバイス
+	ComPtr<IDXGISwapChain3>					m_pSwapChain;						// スワップチェーン
+	ComPtr<ID3D12GraphicsCommandList>		m_pCommandList;						// コマンドリスト
+	ComPtr<ID3D12CommandQueue>				m_pCommandQueue;					// コマンドキュー
+	ComPtr<ID3D12CommandAllocator>			m_pCommandAllocator[FrameCount];	// コマンドアロケーター
+	ComPtr<ID3D12Fence1>					m_pFence[FrameCount];				// フェンス
 	UINT									m_FenceIndex;						// フェンスインデックス
-	ID3D12GraphicsCommandList*				m_pCommandList;						// コマンドリスト
+	UINT64									m_FenceValue;						// フェンスバリュー
+	ComPtr<ID3D12Resource>					m_pRenderTargetView[FrameCount];	// レンダーターゲットビュー
+	ComPtr<ID3D12DescriptorHeap>			m_prtvDescriptorHeap;				// レンダーターゲット用デスクリプタヒープ
+	UINT									m_rtvbDescriptorSize;				// レンダーターゲット用デスクリプタバイト数
+	ComPtr<ID3D12DescriptorHeap>			m_pdsvDescriptorHeap;				// デプスステンシルビュー用デスクリプタヒープ
+	ComPtr<ID3D12Resource>					m_pDepthBuffer;						// デプスステンシルバッファー
 	DXGI_MODE_DESC1							m_DisplayMode;						// ディスプレイモード
 	CD3DX12_VIEWPORT						m_ViewPort;
 	D3D12_RECT								m_ScissorRect;
-	CSceneManager*							m_pSceneManager;			// シーンマネージャー
+	// ----- 描画関連 -----
+	CSceneManager*							m_pSceneManager;					// シーンマネージャー
 
 private:
-	HRESULT CreateCommandQueue();								// コマンドキューの生成
-	HRESULT CreateRenderTargetView();							// レンダーターゲットビューの生成
-	HRESULT CreateDepthStencilView();							// デプスステンシルビューの生成
-	HRESULT CreateCommandAllocators();							// バッファの数だけアロケーターの生成
-	HRESULT CreateFrameFences();								// 描画フレーム同期用フェンスの生成
-	HRESULT CreateCommandList();								// コマンドリストの生成
-	void WaitPreviousFrame(ID3D12Fence*, UINT64);				// CPU、GPUの同期処理
-	void ChangeWindowModeOptimize();				// 表示モードの最適化
+	HRESULT CreateCommandQueue();						// コマンドキューの生成
+	HRESULT CreateRenderTargetView();					// レンダーターゲットビューの生成
+	HRESULT CreateDepthStencilView();					// デプスステンシルビューの生成
+	HRESULT CreateCommandAllocators();					// バッファの数だけアロケーターの生成
+	HRESULT CreateFences();								// 描画フレーム同期用フェンスの生成
+	HRESULT CreateCommandList();						// コマンドリストの生成
+	void WaitPreviousFrame();							// CPU、GPUの同期処理
+	void ChangeWindowModeOptimize();					// 表示モードの最適化
 public:
 	CDXDevice();
 	~CDXDevice();
@@ -62,8 +65,8 @@ public:
 	void CleanupResource();						// リソースの解放
 	void Render();								// レンダリング処理
 	// --- ゲッター、セッター ---
-	ID3D12Device* GetDevice()		{ return m_pd3dDevice; }
-	IDXGISwapChain3* GetSwapChain() { return m_pSwapChain; }
+	ID3D12Device* GetDevice()		{ return m_pd3dDevice.Get(); }
+	IDXGISwapChain3* GetSwapChain() { return m_pSwapChain.Get(); }
 };
 /*
 class CDXDevice

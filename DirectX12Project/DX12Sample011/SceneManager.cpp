@@ -119,7 +119,7 @@ HRESULT CSceneManager::Initialize()
 	// 頂点バッファーの生成
 	VERTEX TriangleVertices[] =
 	{
-		{ VECTOR4(  0.0f,  0.25f, 0.0f, 1.0f), VECTOR4(1.0f, 0.0f, 0.0f, 1.0f) },
+		{ VECTOR4(  0.0f,  0.25f, 0.0f, 0.0f), VECTOR4(1.0f, 0.0f, 0.0f, 1.0f) },
 		{ VECTOR4( 0.25f, -0.25f, 0.0f, 1.0f), VECTOR4(0.0f, 1.0f, 0.0f, 1.0f) },
 		{ VECTOR4(-0.25f, -0.25f, 0.0f, 1.0f), VECTOR4(0.0f, 0.0f, 1.0f, 1.0f) }
 	};
